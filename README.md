@@ -9,12 +9,20 @@ The project focuses on efficient GPU rendering through instanced rendering, allo
 * Instanced rendering
 * .vly format parsing
 * Real-time 3D rendering on Android
+* FPS Counter
+* Automatic .vly file discovery from assets/
+* 
 
 ## Technologies
 * Java
-* Android
+* Kotlin
+* Jetpack Compose
 * OpenGL ES 3.0
 * GLSL ES 3.0
+
+## Requirements 
+* Android device or emulator with OpenGL ES 3.0 support
+* Android API 29 or higher
 
 ## Getting Started
 

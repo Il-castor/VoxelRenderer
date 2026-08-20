@@ -30,8 +30,22 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "VoxelRenderer";
 
+    /** Callback per notificare l'FPS calcolato alla UI Android (chiamato sul thread GL). */
+    public interface FpsListener {
+        void onFpsUpdated(float fps);
+    }
+
     private final Context context;
     private final String assetFileName;
+    private volatile FpsListener fpsListener;
+
+    private long fpsWindowStartNanos = 0L;
+    private int fpsFrameCount = 0;
+    private static final long FPS_UPDATE_INTERVAL_NANOS = 500_000_000L; // aggiorna 2 volte al secondo
+
+    public void setFpsListener(FpsListener listener) {
+        this.fpsListener = listener;
+    }
 
     private int program;
     private int paletteTextureId;
@@ -116,6 +130,8 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        updateFpsCounter();
+
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT | GLES30.GL_DEPTH_BUFFER_BIT);
 
         if (!modelReady.get()) return;
@@ -158,6 +174,34 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
                 instanceCount);
 
         disableAttributes();
+    }
+
+    /**
+     * Conta i frame e, ogni FPS_UPDATE_INTERVAL_NANOS, calcola l'FPS medio
+     * nella finestra e lo notifica al listener (se presente). Eseguito sul
+     * thread di rendering GL: il listener deve marshallare verso il thread
+     * UI se necessario.
+     */
+    private void updateFpsCounter() {
+        long now = System.nanoTime();
+        if (fpsWindowStartNanos == 0L) {
+            fpsWindowStartNanos = now;
+            fpsFrameCount = 0;
+            return;
+        }
+
+        fpsFrameCount++;
+        long elapsed = now - fpsWindowStartNanos;
+
+        if (elapsed >= FPS_UPDATE_INTERVAL_NANOS) {
+            float fps = fpsFrameCount / (elapsed / 1_000_000_000f);
+            FpsListener listener = fpsListener;
+            if (listener != null) {
+                listener.onFpsUpdated(fps);
+            }
+            fpsWindowStartNanos = now;
+            fpsFrameCount = 0;
+        }
     }
 
     // ---- Setup buffer statici (mesh del cubo unitario) ----
