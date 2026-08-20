@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity {
 
     // Cambia qui il file .vly da visualizzare (deve stare in app/src/main/assets/)
-    private static final String VLY_ASSET = "christmas.vly";
+    private static final String VLY_ASSET = "dragon.vly";
 
     private VoxelSurfaceView glView;
 
