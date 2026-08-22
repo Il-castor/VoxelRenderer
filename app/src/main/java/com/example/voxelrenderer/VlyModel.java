@@ -116,10 +116,15 @@ public class VlyModel {
      */
     private void buildPalette(Map<Integer, int[]> colorMap) {
         int numColors = colorMap.size();
-        int side = Math.max(1, (int) Math.ceil(Math.sqrt(numColors)));
+        // Dimensione minima forzata a 8: alcune GPU/driver mobile gestiscono
+        // male texture troppo piccole (es. 3x3) con GL_NEAREST, causando
+        // campionamenti errati vicino ai bordi dei texel. Un padding minimo
+        // costa pochissima VRAM ed elimina il problema.
+        int side = Math.max(8, (int) Math.ceil(Math.sqrt(numColors)));
         this.paletteSide = side;
 
         Bitmap bmp = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888);
+        bmp.eraseColor(Color.BLACK); // celle inutilizzate: nero opaco esplicito
 
         // Ordiniamo le chiavi per avere un mapping deterministico indice->pixel
         List<Integer> keys = new ArrayList<>(colorMap.keySet());
@@ -137,23 +142,41 @@ public class VlyModel {
             int argb = Color.argb(255, rgb[0], rgb[1], rgb[2]);
             bmp.setPixel(px, py, argb);
 
-            // UV al centro del texel, in [0,1]. V invertita perché le texture
-            // OpenGL hanno origine in basso a sinistra mentre Bitmap Android
-            // ha origine in alto a sinistra.
+            // UV al centro del texel, in [0,1]. NOTA: NON invertiamo V.
+            // GLUtils.texImage2D carica il bitmap riga-per-riga così com'è;
+            // l'inversione manuale qui introduceva un mismatch tra il pixel
+            // scritto (riga 0 = primi colori) e quello effettivamente
+            // campionato dalla GPU, causando colori errati/neri per alcuni
+            // texel a seconda del layout.
             float u = (px + 0.5f) / side;
-            float v = 1.0f - (py + 0.5f) / side;
+            float v = (py + 0.5f) / side;
             colorIndexToUV.put(colorIndex, new float[]{u, v});
         }
 
         this.paletteBitmap = bmp;
+
+        // DEBUG: verifica che i pixel scritti siano effettivamente quelli
+        // attesi leggendoli indietro dal bitmap stesso (lato CPU, prima di
+        // qualunque coinvolgimento della GPU/OpenGL).
+        for (int i = 0; i < Math.min(keys.size(), 5); i++) {
+            int px = i % side;
+            int py = i / side;
+            int readBack = bmp.getPixel(px, py);
+            android.util.Log.i("VlyModel", "DEBUG palette pixel(" + px + "," + py + ") = "
+                    + Integer.toHexString(readBack)
+                    + " (atteso colorIndex=" + keys.get(i) + ")");
+        }
     }
 
     /** Ritorna le UV (u,v) associate a un dato indice colore. */
     public float[] getUVForColorIndex(int colorIndex) {
         float[] uv = colorIndexToUV.get(colorIndex);
         if (uv == null) {
-            // fallback difensivo: non dovrebbe accadere con un file .vly valido
-            return new float[]{0f, 0f};
+            // DEBUG: se vedi magenta sul modello, vuol dire che questo
+            // colorIndex non è presente nella mappa colori del file .vly
+            // (bug di parsing o file malformato), non un problema di luce.
+            android.util.Log.w("VlyModel", "colorIndex non trovato in palette: " + colorIndex);
+            return new float[]{-1f, -1f}; // fuori range: con CLAMP_TO_EDGE prende il bordo
         }
         return uv;
     }
