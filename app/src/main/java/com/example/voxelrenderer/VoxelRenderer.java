@@ -56,6 +56,7 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private int cubeVbo;
     private int cubeEbo;
     private int instanceVbo;
+    private int vaoId;
 
     private int instanceCount;
 
@@ -64,7 +65,7 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private int uModelMatrixLoc;
     private int uPaletteTextureLoc;
 
-   
+
     private int uLightPosWorldLoc;
     private int uCameraPosWorldLoc;
     private int uAmbientIntensityLoc;
@@ -111,6 +112,39 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         if (zoomFactor > MAX_ZOOM) zoomFactor = MAX_ZOOM;
     }
 
+    private void setupVertexArrayObject() {
+        int[] vaos = new int[1];
+        GLES30.glGenVertexArrays(1, vaos, 0);
+        vaoId = vaos[0];
+
+        GLES30.glBindVertexArray(vaoId);
+
+        // Attributi mesh cubo (per-vertice)
+        final int cubeStride = CubeGeometry.FLOATS_PER_VERTEX * 4;
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, cubeVbo);
+        GLES30.glEnableVertexAttribArray(0); // aLocalPosition
+        GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, cubeStride, 0);
+        GLES30.glEnableVertexAttribArray(1); // aNormal
+        GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, cubeStride, 3 * 4);
+
+        // Attributi per-istanza
+        final int instanceStride = 5 * 4;
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instanceVbo);
+        GLES30.glEnableVertexAttribArray(2); // aInstanceOffset
+        GLES30.glVertexAttribPointer(2, 3, GLES30.GL_FLOAT, false, instanceStride, 0);
+        GLES30.glVertexAttribDivisor(2, 1);
+        GLES30.glEnableVertexAttribArray(3); // aInstanceUV
+        GLES30.glVertexAttribPointer(3, 2, GLES30.GL_FLOAT, false, instanceStride, 3 * 4);
+        GLES30.glVertexAttribDivisor(3, 1);
+
+        // L'EBO va bindato mentre il VAO è attivo: il VAO lo ricorda
+        GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, cubeEbo);
+
+        // Sblocca il VAO (l'EBO resta associato ad esso, i VBO no)
+        GLES30.glBindVertexArray(0);
+        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
+    }
+
     // ---- GLSurfaceView.Renderer ----
 
     @Override
@@ -135,6 +169,7 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
 
         setupCubeBuffers();
         loadModelAndBuildInstances();
+        setupVertexArrayObject();
     }
 
     @Override
@@ -191,18 +226,14 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, paletteTextureId);
         GLES30.glUniform1i(uPaletteTextureLoc, 0);
 
-        bindCubeAttributes();
-        bindInstanceAttributes();
-
-        GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, cubeEbo);
-        GLES30.glDrawElementsInstanced(
-                GLES30.GL_TRIANGLES,
-                CubeGeometry.INDEX_DATA.length,
-                GLES30.GL_UNSIGNED_SHORT,
-                0,
-                instanceCount);
-
-        disableAttributes();
+       GLES30.glBindVertexArray(vaoId);
+       GLES30.glDrawElementsInstanced(
+               GLES30.GL_TRIANGLES,
+               CubeGeometry.INDEX_DATA.length,
+               GLES30.GL_UNSIGNED_SHORT,
+               0,
+               instanceCount);
+       GLES30.glBindVertexArray(0);
     }
 
     /**
@@ -365,42 +396,5 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         // distanza minima per contenere una sfera di raggio "radius" nel FOV verticale
         cameraDistance = radius / (float) Math.sin(fovRad / 2.0) + radius * 0.3f;
         if (cameraDistance < 2f) cameraDistance = 2f;
-    }
-
-    // ---- Bind attributi per il draw ----
-
-    private void bindCubeAttributes() {
-        final int stride = CubeGeometry.FLOATS_PER_VERTEX * 4;
-
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, cubeVbo);
-
-        GLES30.glEnableVertexAttribArray(0); // aLocalPosition
-        GLES30.glVertexAttribPointer(0, 3, GLES30.GL_FLOAT, false, stride, 0);
-
-        GLES30.glEnableVertexAttribArray(1); // aNormal
-        GLES30.glVertexAttribPointer(1, 3, GLES30.GL_FLOAT, false, stride, 3 * 4);
-    }
-
-    private void bindInstanceAttributes() {
-        final int stride = 5 * 4; // offset(3) + uv(2)
-
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, instanceVbo);
-
-        GLES30.glEnableVertexAttribArray(2); // aInstanceOffset
-        GLES30.glVertexAttribPointer(2, 3, GLES30.GL_FLOAT, false, stride, 0);
-        GLES30.glVertexAttribDivisor(2, 1); // avanza di 1 per istanza, non per vertice
-
-        GLES30.glEnableVertexAttribArray(3); // aInstanceUV
-        GLES30.glVertexAttribPointer(3, 2, GLES30.GL_FLOAT, false, stride, 3 * 4);
-        GLES30.glVertexAttribDivisor(3, 1);
-    }
-
-    private void disableAttributes() {
-        GLES30.glDisableVertexAttribArray(0);
-        GLES30.glDisableVertexAttribArray(1);
-        GLES30.glDisableVertexAttribArray(2);
-        GLES30.glDisableVertexAttribArray(3);
-        GLES30.glBindBuffer(GLES30.GL_ARRAY_BUFFER, 0);
-        GLES30.glBindBuffer(GLES30.GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 }
