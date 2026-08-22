@@ -64,6 +64,13 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private int uModelMatrixLoc;
     private int uPaletteTextureLoc;
 
+   
+    private int uLightPosWorldLoc;
+    private int uCameraPosWorldLoc;
+    private int uAmbientIntensityLoc;
+    private int uSpecularIntensityLoc;
+    private int uShininessLoc;
+
     private final float[] projectionMatrix = new float[16];
     private final float[] viewMatrix = new float[16];
     private final float[] modelMatrix = new float[16];
@@ -74,6 +81,11 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private volatile float zoomFactor = 1f;
     private static final float MIN_ZOOM = 0.3f;
     private static final float MAX_ZOOM = 3.0f;
+
+    private static final float AMBIENT_INTENSITY = 0.35f;
+    private static final float SPECULAR_INTENSITY = 0.5f;
+    private static final float SHININESS = 32f;
+    private static final float[] LIGHT_POS_WORLD = {10f, 15f, 10f};
 
     private float cameraDistance = 5f;
     private float[] modelCenter = new float[]{0f, 0f, 0f};
@@ -114,6 +126,13 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         uModelMatrixLoc = GLES30.glGetUniformLocation(program, "uModelMatrix");
         uPaletteTextureLoc = GLES30.glGetUniformLocation(program, "uPaletteTexture");
 
+        uPaletteTextureLoc = GLES30.glGetUniformLocation(program, "uPaletteTexture");
+        uLightPosWorldLoc = GLES30.glGetUniformLocation(program, "uLightPosWorld");
+        uCameraPosWorldLoc = GLES30.glGetUniformLocation(program, "uCameraPosWorld");
+        uAmbientIntensityLoc = GLES30.glGetUniformLocation(program, "uAmbientIntensity");
+        uSpecularIntensityLoc = GLES30.glGetUniformLocation(program, "uSpecularIntensity");
+        uShininessLoc = GLES30.glGetUniformLocation(program, "uShininess");
+
         setupCubeBuffers();
         loadModelAndBuildInstances();
     }
@@ -141,10 +160,14 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         // Camera: guarda il centro del modello da una distanza fissata in
         // base al bounding box, modulata dallo zoom utente.
         float distance = cameraDistance / zoomFactor;
+        float eyeX = modelCenter[0];
+        float eyeY = modelCenter[1];
+        float eyeZ = modelCenter[2] + distance * 0.4f + distance;
+
         Matrix.setLookAtM(viewMatrix, 0,
-                modelCenter[0], modelCenter[1], modelCenter[2] + distance * 0.4f + distance, // eye
-                modelCenter[0], modelCenter[1], modelCenter[2],                               // center
-                0f, 1f, 0f);                                                                   // up
+               eyeX, eyeY, eyeZ, modelCenter[0], modelCenter[1], modelCenter[2],
+                0f, 1f, 0f); // up
+
         // Nota: la Z è up-axis nel formato vly; costruiamo comunque il modello
         // già "raddrizzato" in setupInstanceBuffer (swap Y/Z), quindi qui la
         // camera usa la convenzione standard Y-up di OpenGL.
@@ -157,6 +180,12 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
 
         GLES30.glUniformMatrix4fv(uMVPMatrixLoc, 1, false, mvpMatrix, 0);
         GLES30.glUniformMatrix4fv(uModelMatrixLoc, 1, false, modelMatrix, 0);
+
+        GLES30.glUniform3f(uLightPosWorldLoc, LIGHT_POS_WORLD[0], LIGHT_POS_WORLD[1], LIGHT_POS_WORLD[2]);
+        GLES30.glUniform3f(uCameraPosWorldLoc, eyeX, eyeY, eyeZ);
+        GLES30.glUniform1f(uAmbientIntensityLoc, AMBIENT_INTENSITY);
+        GLES30.glUniform1f(uSpecularIntensityLoc, SPECULAR_INTENSITY);
+        GLES30.glUniform1f(uShininessLoc, SHININESS);
 
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D, paletteTextureId);
