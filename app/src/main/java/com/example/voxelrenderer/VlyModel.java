@@ -162,9 +162,9 @@ public class VlyModel {
             int px = i % side;
             int py = i / side;
             int readBack = bmp.getPixel(px, py);
-            android.util.Log.i("VlyModel", "DEBUG palette pixel(" + px + "," + py + ") = "
-                    + Integer.toHexString(readBack)
-                    + " (atteso colorIndex=" + keys.get(i) + ")");
+            //android.util.Log.i("VlyModel", "DEBUG palette pixel(" + px + "," + py + ") = "
+            //        + Integer.toHexString(readBack)
+            //        + " (atteso colorIndex=" + keys.get(i) + ")");
         }
     }
 
