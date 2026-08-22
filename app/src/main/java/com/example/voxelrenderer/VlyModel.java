@@ -107,6 +107,7 @@ public class VlyModel {
         }
 
         model.buildPalette(colorMap);
+        model.cullInteriorVoxels();
         return model;
     }
 
@@ -195,5 +196,51 @@ public class VlyModel {
         int idx = line.indexOf(':');
         String rest = (idx >= 0) ? line.substring(idx + 1).trim() : line.trim();
         return new String[]{rest};
+    }
+
+    /**
+     * Rimuove dalla lista i voxel completamente circondati da altri voxel
+     * pieni su tutte e 6 le direzioni (facce interne, mai visibili
+     * dall'esterno). Riduce drasticamente il numero di istanze disegnate
+     * su modelli densi, senza alcun impatto visivo.
+     */
+    private void cullInteriorVoxels() {
+        // Mappa posizione (x,y,z) -> presenza, per lookup O(1) dei vicini.
+        // Impacchettiamo le 3 coordinate in una chiave long (assumendo che
+        // stiano comodamente in 20 bit ciascuna, cioè fino a ~1M per asse,
+        // ben oltre qualunque grid_size realistico per questo formato).
+        java.util.HashSet<Long> occupied = new java.util.HashSet<>(voxels.size() * 2);
+        for (Voxel v : voxels) {
+            occupied.add(packKey(v.x, v.y, v.z));
+        }
+
+        List<Voxel> visible = new ArrayList<>(voxels.size());
+        for (Voxel v : voxels) {
+            boolean fullyEnclosed =
+                    occupied.contains(packKey(v.x + 1, v.y, v.z)) &&
+                            occupied.contains(packKey(v.x - 1, v.y, v.z)) &&
+                            occupied.contains(packKey(v.x, v.y + 1, v.z)) &&
+                            occupied.contains(packKey(v.x, v.y - 1, v.z)) &&
+                            occupied.contains(packKey(v.x, v.y, v.z + 1)) &&
+                            occupied.contains(packKey(v.x, v.y, v.z - 1));
+
+            if (!fullyEnclosed) {
+                visible.add(v);
+            }
+        }
+        android.util.Log.i("VlyModel", "Culling voxel interni: " + voxels.size()
+                + " -> " + visible.size() + " istanze disegnate");
+
+        voxels = visible;
+    }
+
+    /** Impacchetta 3 coordinate intere in una singola chiave long univoca */
+    private static long packKey(int x, int y, int z) {
+        // offset per gestire coordinate negative (non dovrebbero comparire
+        // nel formato .vly, ma lo teniamo robusto)
+        long xi = x + 1_000_000L;
+        long yi = y + 1_000_000L;
+        long zi = z + 1_000_000L;
+        return (xi << 42) | (yi << 21) | zi;
     }
 }
