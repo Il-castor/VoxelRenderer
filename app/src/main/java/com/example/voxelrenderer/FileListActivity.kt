@@ -29,7 +29,7 @@ class FileListActivity : ComponentActivity() {
         val vlyFiles = listVlyAssets()
 
         setContent {
-            MaterialTheme {
+            MaterialTheme ( colorScheme = lightColorScheme()) {
                 FileListScreen(
                     files = vlyFiles,
                     onFileSelected = { fileName -> openRenderer(fileName) }
@@ -41,7 +41,9 @@ class FileListActivity : ComponentActivity() {
     /** Elenca i file con estensione .vly presenti nella cartella assets/. */
     private fun listVlyAssets(): List<String> {
         val all = assets.list("") ?: emptyArray()
-        return all.filter { it.endsWith(".vly", ignoreCase = true) }.sorted()
+        val result = all.filter { it.endsWith(".vly", ignoreCase = true) }.sorted()
+        android.util.Log.i("FileListActivity", "Trovati ${result.size} file .vly: $result")
+        return result
     }
 
     private fun openRenderer(fileName: String) {

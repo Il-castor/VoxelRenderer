@@ -19,6 +19,7 @@
 
         <activity
             android:name=".FileListActivity"
+            android:theme="@style/Theme.VoxelRenderer"
             android:exported="true">
 
             <intent-filter>
