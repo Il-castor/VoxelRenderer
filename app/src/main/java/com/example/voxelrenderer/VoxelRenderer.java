@@ -71,6 +71,7 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private int uAmbientIntensityLoc;
     private int uSpecularIntensityLoc;
     private int uShininessLoc;
+    private int totalVoxelCount;
 
     private final float[] projectionMatrix = new float[16];
     private final float[] viewMatrix = new float[16];
@@ -301,6 +302,7 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
     private void loadModelAndBuildInstances() {
         try {
             VlyModel model = VlyModel.loadFromAssets(context, assetFileName);
+            totalVoxelCount = model.originalVoxelCount;
             buildInstanceBuffer(model);
             uploadPaletteTexture(model);
             computeCameraFraming(model);
@@ -310,6 +312,13 @@ public class VoxelRenderer implements GLSurfaceView.Renderer {
         }
     }
 
+    public int getInstanceCount() {
+        return instanceCount;
+    }
+
+    public int getTotalVoxelCount() {
+        return totalVoxelCount;
+    }
     /**
      * Costruisce il VBO per-istanza: per ogni voxel, (offsetX, offsetY, offsetZ, u, v).
      * Convertiamo le coordinate griglia (X,Y,Z con Z up) in spazio locale

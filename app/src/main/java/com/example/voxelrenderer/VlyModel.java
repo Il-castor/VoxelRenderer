@@ -47,6 +47,7 @@ public class VlyModel {
     public int gridX, gridY, gridZ;
     public int voxelNum;
     public List<Voxel> voxels;
+    public int originalVoxelCount;
 
     /** Palette come bitmap quadrata (side x side). */
     public Bitmap paletteBitmap;
@@ -228,6 +229,7 @@ public class VlyModel {
                 visible.add(v);
             }
         }
+        this.originalVoxelCount = voxels.size();
         android.util.Log.i("VlyModel", "Culling voxel interni: " + voxels.size()
                 + " -> " + visible.size() + " istanze disegnate");
 

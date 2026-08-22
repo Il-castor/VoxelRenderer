@@ -55,7 +55,8 @@ class RendererActivity : AppCompatActivity() {
         // sul thread UI per aggiornare la TextView.
         glView.setFpsListener { fps ->
             runOnUiThread {
-                fpsTextView.text = String.format(Locale.US, "FPS: %.1f", fps)
+                fpsTextView.text = String.format(Locale.US, "FPS: %.1f\nVoxel: %d / %d", fps,
+                    glView.renderer.instanceCount, glView.renderer.totalVoxelCount);
             }
         }
     }

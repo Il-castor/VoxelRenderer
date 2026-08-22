@@ -43,6 +43,10 @@ public class VoxelSurfaceView extends GLSurfaceView {
         renderer.setFpsListener(listener);
     }
 
+    public VoxelRenderer getRenderer() {
+        return renderer;
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         scaleDetector.onTouchEvent(event);
